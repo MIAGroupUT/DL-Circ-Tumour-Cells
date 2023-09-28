@@ -29,7 +29,7 @@ class ConvBlock(nn.Module):
         self.act_func = act_func
 
         # Define the convolutional layer and the maxpooling layer
-        self.conv = nn.Conv2d(in_channels, out_channels, conv_kernel_size)
+        self.conv = nn.Conv2d(in_channels, out_channels, conv_kernel_size, padding='same')
         self.maxpool = nn.MaxPool2d(maxpool_kernel_size)
 
     def forward(self, x):
@@ -37,11 +37,11 @@ class ConvBlock(nn.Module):
         # First apply the convolutional layer
         y = self.conv(x)
 
-        # Then apply maxpooling
-        y = self.maxpool(y)
+        # Apply the activation function
+        y = self.act_func(y)
 
-        # Finally return the value after having applied the activation function
-        return self.act_func(y)
+        # Finally return the value after applying maxpooling
+        return self.maxpool(y)
 
 
 class ConvTransposeBlock(nn.Module):
@@ -54,12 +54,14 @@ class ConvTransposeBlock(nn.Module):
         out_channels:           the number of output channels.
         conv_kernel_size:       a tuple (i, j) with the size of the kernel used in the transposed convolutional layer.
                                 DEFAULT: (3, 3)
-        upsampling_kernel_size: a tuple (i, j) with the size of the kernel used for upsampling. DEFAULT: (2, 2)
+        scale_factor:           an integer defining by how much we multiply the current resolution of the 'image'. So
+                                if the current resolution is 10 x 10 and scale_factor=2, then the new resolution is
+                                20 x 20. DEFAULT: 2.
         act_func:               the activation function used. DEFAULT: torch.relu
 
     """
 
-    def __init__(self, in_channels, out_channels, conv_kernel_size=(3, 3), upsampling_kernel_size=(2, 2),
+    def __init__(self, in_channels, out_channels, conv_kernel_size=(3, 3), scale_factor=2,
                  act_func=torch.relu):
         super(ConvTransposeBlock, self).__init__()
 
@@ -67,12 +69,12 @@ class ConvTransposeBlock(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.conv_kernel_size = conv_kernel_size
-        self.upsampling_kernel_size = upsampling_kernel_size
+        self.scale_factor = scale_factor
         self.act_func = act_func
 
         # Define the upsampling layer and the transposed convolution layer
-        self.upsample = nn.Upsample(upsampling_kernel_size)
-        self.convtranspose = nn.ConvTranspose2d(in_channels, out_channels, conv_kernel_size)
+        self.upsample = nn.Upsample(scale_factor=scale_factor)
+        self.convtranspose = nn.ConvTranspose2d(in_channels, out_channels, conv_kernel_size, padding=1)
 
     def forward(self, x):
         # First apply the upsampling
@@ -141,23 +143,26 @@ class Decoder(nn.Module):
 
         # Define 3 decoders composed of three transposed convolution blocks. Each decoder decodes one fluorescent
         # channel
-        self.decoder1 = nn.Sequential(ConvTransposeBlock(64, 32, (3, 3), (2, 2), torch.relu),
-                                       ConvTransposeBlock(32, 16, (3, 3), (2, 2), torch.relu),
-                                       ConvTransposeBlock(16, 1, (3, 3), (2, 2), torch.sigmoid))
+        self.decoder1 = nn.Sequential(ConvTransposeBlock(64, 32, (3, 3), 2, torch.relu),
+                                       ConvTransposeBlock(32, 16, (3, 3), 2, torch.relu),
+                                       ConvTransposeBlock(16, 1, (3, 3), 2, torch.sigmoid))
 
-        self.decoder2 = nn.Sequential(ConvTransposeBlock(64, 32, (3, 3), (2, 2), torch.relu),
-                                      ConvTransposeBlock(32, 16, (3, 3), (2, 2), torch.relu),
-                                      ConvTransposeBlock(16, 1, (3, 3), (2, 2), torch.sigmoid))
+        self.decoder2 = nn.Sequential(ConvTransposeBlock(64, 32, (3, 3), 2, torch.relu),
+                                      ConvTransposeBlock(32, 16, (3, 3), 2, torch.relu),
+                                      ConvTransposeBlock(16, 1, (3, 3), 2, torch.sigmoid))
 
-        self.decoder3 = nn.Sequential(ConvTransposeBlock(64, 32, (3, 3), (2, 2), torch.relu),
-                                      ConvTransposeBlock(32, 16, (3, 3), (2, 2), torch.relu),
-                                      ConvTransposeBlock(16, 1, (3, 3), (2, 2), torch.sigmoid))
+        self.decoder3 = nn.Sequential(ConvTransposeBlock(64, 32, (3, 3), 2, torch.relu),
+                                      ConvTransposeBlock(32, 16, (3, 3), 2, torch.relu),
+                                      ConvTransposeBlock(16, 1, (3, 3), 2, torch.sigmoid))
 
     def forward(self, x):
 
         # Apply the first linear layer to create a higher dimensional starting vector that can be supplied to the first
         # convolutional layer after reshaping.
-        y = torch.reshape(self.linear1(x), (x.shape(0), 64, 10, 10))
+        y = torch.reshape(self.linear1(x), (x.size(0), 64, 10, 10))
+
+        # Apply a relu activation function
+        y = torch.relu(y)
 
         # Apply the decoders to get each fluorescence channels
         x1 = self.decoder1(y)
@@ -173,17 +178,19 @@ class Classifier(nn.Module):
     This defines the classifier that is used to classify the images based on their latent codes.
 
     Args:
-        latent_dim:     the dimension of the latent codes
+        latent_dim:         the dimension of the latent codes
+        number_of_classes:  the number of classes to predict
 
     """
 
-    def __init__(self, latent_dim):
+    def __init__(self, latent_dim, number_of_classes):
         super(Classifier, self).__init__()
         self.latent_dim = latent_dim
+        self.number_of_classes = number_of_classes
 
         # Define the two linear layers used in the classifier
-        self.linear1 = nn.Linear(self.latent_dim, 6)
-        self.linear2 = nn.Linear(6, 6)
+        self.linear1 = nn.Linear(self.latent_dim, number_of_classes)
+        self.linear2 = nn.Linear(number_of_classes, number_of_classes)
 
     def forward(self, x):
         # Apply the first linear layer, a relu function, the second linear layer, and then a softmax
