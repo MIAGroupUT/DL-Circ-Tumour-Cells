@@ -16,9 +16,11 @@ cross_entropy_loss = torch.nn.CrossEntropyLoss()
 
 binary_cross_entropy_loss = torch.nn.BCELoss(reduction='mean')
 
+negative_log_likelihood = torch.nn.NLLLoss(reduction='mean')
+
 
 def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=75, batch_size=500, number_of_classes=2,
-          beta=1.0, alpha=0.001, log_frequency=100, snapshot_frequency=100, num_random_samples=3,
+          beta=1.0, alpha=0.001, gamma=1.0, log_frequency=100, snapshot_frequency=100, num_random_samples=3,
           batch_size_update_freq=125, max_batch_size=256):
 
     # Use cuda if cuda is available
@@ -180,17 +182,17 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
 
             # Calculate the reconstruction loss
             #recon_loss = torch.mean(torch.sum((reconstructions_flattened - images_flattened) ** 2, dim=-1))
-
-            recon_loss = binary_cross_entropy_loss(reconstructions_flattened, images_flattened) * 80 * 80
+            recon_loss = binary_cross_entropy_loss(reconstructions_flattened, images_flattened) * 80 * 80 * 3
 
             # Calculate the classification loss
-            classification_loss = cross_entropy_loss(probs, labels)
+            classification_loss = negative_log_likelihood(torch.log(probs), labels[:, 1].long())
 
             # Calculate the regularization on the latent codes
-            lat_code_reg = torch.sum(latent_codes ** 2)
+            lat_code_reg = torch.mean(torch.sum(latent_codes ** 2, dim=-1))
+            #lat_code_reg = torch.sum(latent_codes ** 2) # This is the one used in the original code I think, but I do not think it is a good choice!
 
             # Calculate the full loss
-            loss = recon_loss + beta * classification_loss + alpha * lat_code_reg
+            loss = gamma * recon_loss + beta * classification_loss + alpha * lat_code_reg
 
             # Backpropagate the gradients
             loss.backward()
@@ -241,7 +243,7 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
 
 
 def multiple_train_loops(beta_list, experiment_directory, latent_dim=50, num_epochs=75, batch_size=500,
-                         number_of_classes=2, alpha=0.001, log_frequency=100, snapshot_frequency=100,
+                         number_of_classes=2, alpha=0.001, gamma=1.0, log_frequency=100, snapshot_frequency=100,
                          num_random_samples=3, batch_size_update_freq=125, max_batch_size=256):
 
     # Initialize prev_model_dir. This variable keeps track of where the last trained model is stored.
@@ -259,7 +261,7 @@ def multiple_train_loops(beta_list, experiment_directory, latent_dim=50, num_epo
 
         # Train the model with the specific beta value
         train(sub_experiment_directory, prev_model_dir, latent_dim=latent_dim, num_epochs=num_epochs,
-              batch_size=batch_size, number_of_classes=number_of_classes, beta=beta, alpha=alpha,
+              batch_size=batch_size, number_of_classes=number_of_classes, beta=beta, alpha=alpha, gamma=gamma,
               log_frequency=log_frequency, snapshot_frequency=snapshot_frequency, num_random_samples=num_random_samples,
               batch_size_update_freq=batch_size_update_freq, max_batch_size=max_batch_size)
 
@@ -268,7 +270,7 @@ def multiple_train_loops(beta_list, experiment_directory, latent_dim=50, num_epo
 
 
 if __name__ == "__main__":
-    multiple_train_loops(beta_list=(0, 10, 100, 1000), experiment_directory=os.path.join("..", "results", "test"),
-                         latent_dim=50, num_epochs=75, batch_size=16, number_of_classes=2, alpha=0.001,
+    multiple_train_loops(beta_list=(1, 10, 100, 1000), experiment_directory=os.path.join("..", "results", "test"),
+                         latent_dim=50, num_epochs=75, batch_size=16, number_of_classes=5, alpha=0.01, gamma=0.0,
                          log_frequency=25, snapshot_frequency=25, num_random_samples=3, batch_size_update_freq=15,
                          max_batch_size=256)
