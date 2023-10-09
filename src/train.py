@@ -58,8 +58,10 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
 
     # Define the optimizers
 
-    optimizer = torch.optim.Adadelta(list(encoder.parameters()) + list(decoder.parameters()) +
-                                     list(classifier.parameters()), lr=0.001)
+    optimizer = torch.optim.Adam(list(encoder.parameters()) + list(decoder.parameters()) +
+                                 list(classifier.parameters()), lr=0.001)
+
+    # NOTE: In the original paper, the optimizer was 'Adadelta'. I used Adam instead!
 
     # optimizer = torch.optim.Adadelta(
     #     [
@@ -185,7 +187,7 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
             recon_loss = binary_cross_entropy_loss(reconstructions_flattened, images_flattened) * 80 * 80 * 3
 
             # Calculate the classification loss
-            classification_loss = negative_log_likelihood(torch.log(probs), labels[:, 1].long())
+            classification_loss = negative_log_likelihood(torch.log(probs), labels)
 
             # Calculate the regularization on the latent codes
             lat_code_reg = torch.mean(torch.sum(latent_codes ** 2, dim=-1))
@@ -270,7 +272,7 @@ def multiple_train_loops(beta_list, experiment_directory, latent_dim=50, num_epo
 
 
 if __name__ == "__main__":
-    multiple_train_loops(beta_list=(1, 10, 100, 1000), experiment_directory=os.path.join("..", "results", "test"),
-                         latent_dim=50, num_epochs=75, batch_size=16, number_of_classes=5, alpha=0.01, gamma=0.0,
+    multiple_train_loops(beta_list=(0, 10, 100, 1000), experiment_directory=os.path.join("..", "results", "test"),
+                         latent_dim=50, num_epochs=75, batch_size=16, number_of_classes=6, alpha=0.01, gamma=1.0,
                          log_frequency=25, snapshot_frequency=25, num_random_samples=3, batch_size_update_freq=15,
                          max_batch_size=256)

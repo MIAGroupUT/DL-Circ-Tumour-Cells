@@ -1,6 +1,33 @@
 import torch
 import torch.nn as nn
-import numpy as np
+
+
+def linear_weights_kaiming_init(m):
+
+    if isinstance(m, nn.Linear):
+        nn.init.kaiming_normal_(m.weight.data)
+        nn.init.zeros_(m.bias.data)
+
+
+def linear_weights_xavier_init(m):
+
+    if isinstance(m, nn.Linear):
+        nn.init.xavier_uniform_(m.weight.data)
+        nn.init.zeros_(m.bias.data)
+
+
+def conv_weights_init(m):
+
+    if isinstance(m, nn.Conv2d):
+        nn.init.xavier_uniform_(m.weight.data)
+        nn.init.zeros_(m.bias.data)
+
+
+def transpose_conv_weights_init(m):
+
+    if isinstance(m, nn.ConvTranspose2d):
+        nn.init.xavier_uniform_(m.weight.data)
+        nn.init.zeros_(m.bias.data)
 
 
 # class CustomMaxPooling2D(nn.Module):
@@ -108,6 +135,9 @@ class ConvBlock(nn.Module):
         self.conv = nn.Conv2d(in_channels, out_channels, conv_kernel_size, padding='same')
         self.maxpool = nn.MaxPool2d(maxpool_kernel_size)
 
+        # Initialize the weights
+        self.conv.apply(conv_weights_init)
+
         #self.maxpool = CustomMaxPooling2D(maxpool_kernel_size)
 
     def forward(self, x):
@@ -154,6 +184,9 @@ class ConvTransposeBlock(nn.Module):
         self.upsample = nn.Upsample(scale_factor=scale_factor)
         self.convtranspose = nn.ConvTranspose2d(in_channels, out_channels, conv_kernel_size, padding=1)
 
+        # Initialize the weights
+        self.convtranspose.apply(transpose_conv_weights_init)
+
     def forward(self, x):
         # First apply the upsampling
         y = self.upsample(x)
@@ -185,6 +218,10 @@ class Encoder(nn.Module):
         # Define two linear layers that make sure that we go to the right latent dimension
         self.linear1 = nn.Linear(10 * 10 * 64, 4 * self.latent_dim + 8)
         self.linear2 = nn.Linear(4 * self.latent_dim + 8, self.latent_dim)
+
+        # Initialize the weights
+        self.linear1.apply(linear_weights_xavier_init)
+        self.linear2.apply(linear_weights_xavier_init)
 
     def forward(self, x):
 
@@ -218,6 +255,9 @@ class Decoder(nn.Module):
 
         # Define the linear layer that transforms the latent code into a higher dimensional vector
         self.linear1 = nn.Linear(self.latent_dim, 10 * 10 * 64)
+
+        # Initialize the weights
+        self.linear1.apply(linear_weights_xavier_init)
 
         # Define 3 decoders composed of three transposed convolution blocks. Each decoder decodes one fluorescent
         # channel
@@ -269,6 +309,10 @@ class Classifier(nn.Module):
         # Define the two linear layers used in the classifier
         self.linear1 = nn.Linear(self.latent_dim, number_of_classes)
         self.linear2 = nn.Linear(number_of_classes, number_of_classes)
+
+        # Initialize the weights
+        self.linear1.apply(linear_weights_kaiming_init)
+        self.linear2.apply(linear_weights_kaiming_init)
 
     def forward(self, x):
         # Apply the first linear layer, a relu function, the second linear layer, and then a softmax

@@ -134,8 +134,8 @@ def evaluate_model_on_data(model_path, latent_dim, number_of_classes):
 
 
 if __name__ == "__main__":
-    model_path = os.path.join("..", "results", "test", "model_beta_1000")
+    model_path = os.path.join("..", "results", "test", "model_beta_100")
     latent_dim = 50
-    number_of_classes = 5
+    number_of_classes = 6
 
     evaluate_model_on_data(model_path, latent_dim, number_of_classes)
