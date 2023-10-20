@@ -5,12 +5,14 @@ import torch
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
+import random
+import argparse
 
 from src.models import Encoder, Decoder, Classifier
-from src.save_utils import load_model_parameters
-from evaluation_utils import make_tsne_plot, compute_conf_matrix, trace_tsne_cluster
+from src.save_and_load_utils import load_model_parameters
+from src.evaluation_utils import make_tsne_plot, compute_conf_matrix, trace_tsne_cluster
 
-data_path = os.path.join("..", "data", "cellline-data", "val_set")
+data_path = os.path.join("", "data", "cellline-data", "val_set")
 
 
 def load_data():
@@ -60,7 +62,7 @@ def plot_and_save_confusion_matrix(conf_mat, labels, result_path=0):
         plt.savefig(os.path.join(result_path, "confusion_matrix.png"))
 
 
-def evaluate_model_on_data(model_path):
+def evaluate_model_on_data(model_path, bounding_box=(-3, 7, 2, 13)):
     """"
     This function takes the model saved at 'model_path' and evaluates the model based on the number of classes the
     model is trained on.
@@ -84,7 +86,18 @@ def evaluate_model_on_data(model_path):
     Args:
         model_path:             the directory in which all the relevant parameters of the model are stored. An example
                                 is results/test/model_beta_0
+        bounding_box:           for showing the reconstructions of a cluster in a bounding box, we need to specify the
+                                bounding box. This is done via a tuple of 4 numbers: (x_left, x_right, y_bottom, y_top).
+                                These numbers form the corners of a rectangle. More precisely, we use the following
+                                rectangle / bounding box:
 
+                                (x_left, y_top)    ---------------- (x_right, y_top)
+                                       |                                    |
+                                       |                                    |
+                                       |                                    |
+                                (x_left, y_bottom) ---------------- (x_right, y_bottom)
+
+                                DEFAULT: (-3, 7, 2, 13).
     """
 
     # Use cuda if cuda is available
@@ -151,9 +164,10 @@ def evaluate_model_on_data(model_path):
         tsne_x_val = make_tsne_plot(lat_codes_6class.detach().cpu().numpy(), y_pred_val, label_dict_5class,
                                     result_path=result_path, name="tsne_5class_with_predicted_label_coloring")
 
-        # Reconstruct 10 examples of cluster -3 <= tsne1 <= 7 & 2 <= tsne2 <= 13
-        trace_tsne_cluster(tsne_x_val, x_val_6class, -3, 7, 2, 13, 10, result_path=result_path,
-                           name="trace_tsne_cluster")
+        # Reconstruct 10 examples of the cluster inside the bounding box
+        box_x_left, box_x_right, box_y_bottom, box_y_top = bounding_box
+        trace_tsne_cluster(tsne_x_val, x_val_6class, box_x_left, box_x_right, box_y_bottom, box_y_top, 10,
+                           result_path=result_path, name="trace_tsne_cluster")
 
     elif number_of_classes == 6:
 
@@ -181,8 +195,56 @@ def evaluate_model_on_data(model_path):
 
 
 if __name__ == "__main__":
-    model_path = os.path.join("..", "results", "test", "model_beta_100")
-    latent_dim = 50
-    number_of_classes = 6
 
-    evaluate_model_on_data(model_path, latent_dim, number_of_classes)
+    # Set some random seeds
+    random.seed(31359)
+    torch.random.manual_seed(31359)
+    np.random.seed(31359)
+
+    # Create an argument parser
+    arg_parser = argparse.ArgumentParser(description="Evaluate the trained model")
+    arg_parser.add_argument(
+        "--model_path",
+        "-m",
+        dest="model_path",
+        required=True,
+        help="The directory where all objects relevant to the model are stored. This can coincide with the experiment "
+             "directory",
+    )
+    arg_parser.add_argument(
+        "--box_x_left",
+        "-b_x_l",
+        dest="box_x_left",
+        help="The x-value of the left-hand-side of the bounding box",
+        default=-3
+    )
+    arg_parser.add_argument(
+        "--box_x_right",
+        "-b_x_r",
+        dest="box_x_right",
+        help="The x-value of the right-hand-side of the bounding box",
+        default=7
+    )
+    arg_parser.add_argument(
+        "--box_y_bottom",
+        "-b_y_b",
+        dest="box_y_bottom",
+        help="The y-value of the bottom-side of the bounding box",
+        default=2
+    )
+    arg_parser.add_argument(
+        "--box_y_top",
+        "-b_y_t",
+        dest="box_y_top",
+        help="The y-value of the top-side of the bounding box",
+        default=13
+    )
+
+    # Get the arguments
+    args = arg_parser.parse_args()
+
+    # Define the bounding box
+    bounding_box = (args.box_x_left, args.box_x_right, args.box_y_bottom, args.box_y_top)
+
+    # Evaluate the model
+    evaluate_model_on_data(os.path.join(os.path.dirname(__file__), args.model_path), bounding_box)

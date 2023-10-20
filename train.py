@@ -1,7 +1,7 @@
 from src.models import Encoder, Decoder, Classifier
 from src.data import Dataset
-from src.save_utils import save_model, save_optimizer, load_model_parameters
-from src.visualization import save_reconstruction_and_gt_images
+from src.save_and_load_utils import save_model, save_optimizer, load_model_parameters
+from src.evaluation_utils import save_reconstruction_and_gt_images
 
 from torchvision.transforms.v2 import Compose, RandomHorizontalFlip, RandomAffine, InterpolationMode
 from torch.utils.data.dataloader import DataLoader
@@ -10,6 +10,7 @@ import torch
 
 import os
 import json
+import argparse
 
 import wandb
 
@@ -273,7 +274,41 @@ def multiple_train_loops(beta_list, experiment_directory, latent_dim=50, num_epo
 
 
 if __name__ == "__main__":
-    multiple_train_loops(beta_list=(0, 10, 100, 1000), experiment_directory=os.path.join("..", "results", "test"),
-                         latent_dim=50, num_epochs=75, batch_size=16, number_of_classes=6, alpha=0.01, gamma=1.0,
-                         log_frequency=25, snapshot_frequency=25, num_random_samples=3, batch_size_update_freq=15,
-                         max_batch_size=256)
+
+    # Set some random seeds
+    torch.random.manual_seed(2583)
+
+    # Create an argument parser
+    arg_parser = argparse.ArgumentParser(description="Execute the training procedure")
+    arg_parser.add_argument(
+        "--experiment",
+        "-e",
+        dest="experiment_directory",
+        required=True,
+        help="The experiment directory. This directory should include "
+        + "experiment specifications in 'specs.json', and logging will be "
+        + "done in this directory as well.",
+    )
+
+    # Get the arguments
+    args = arg_parser.parse_args()
+
+    # Load the base specs file from the main experiment directory
+    with open(os.path.join(os.path.dirname(__file__), args.experiment_directory, "specs_base.json")) as f:
+        specs_base = json.load(f)
+
+    # Run the training procedure
+    multiple_train_loops(experiment_directory=os.path.join(os.path.dirname(__file__), args.experiment_directory),
+                         beta_list=specs_base["beta_list"],
+                         latent_dim=specs_base["latent_dim"],
+                         num_epochs=specs_base["num_epochs"],
+                         batch_size=specs_base["batch_size"],
+                         number_of_classes=specs_base["number_of_classes"],
+                         alpha=specs_base["alpha"],
+                         gamma=specs_base["gamma"],
+                         log_frequency=specs_base["log_frequency"],
+                         snapshot_frequency=specs_base["snapshot_frequency"],
+                         num_random_samples=specs_base["num_random_samples"],
+                         batch_size_update_freq=specs_base["batch_size_update_freq"],
+                         max_batch_size=specs_base["max_batch_size"]
+                         )
