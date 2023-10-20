@@ -3,6 +3,12 @@ import torch.nn as nn
 
 
 def linear_weights_kaiming_init(m):
+    """"
+    This function applies the kaiming_normal initialization to the weights of a linear layer.
+
+    Args:
+        m:          a nn.Linear module.
+    """
 
     if isinstance(m, nn.Linear):
         nn.init.kaiming_normal_(m.weight.data)
@@ -10,6 +16,12 @@ def linear_weights_kaiming_init(m):
 
 
 def linear_weights_xavier_init(m):
+    """"
+    This function applies the xavier_uniform initialization to the weights of a linear layer.
+
+    Args:
+        m:          a nn.Linear module.
+    """
 
     if isinstance(m, nn.Linear):
         nn.init.xavier_uniform_(m.weight.data)
@@ -17,6 +29,12 @@ def linear_weights_xavier_init(m):
 
 
 def conv_weights_init(m):
+    """"
+    This function applies the xavier_uniform initialization to the weights of a convolution layer.
+
+    Args:
+        m:          a nn.Conv2d module.
+    """
 
     if isinstance(m, nn.Conv2d):
         nn.init.xavier_uniform_(m.weight.data)
@@ -24,85 +42,16 @@ def conv_weights_init(m):
 
 
 def transpose_conv_weights_init(m):
+    """"
+    This function applies the xavier_uniform initialization to the weights of a transposed convolution layer.
+
+    Args:
+        m:          a nn.ConvTranspose2d module.
+    """
 
     if isinstance(m, nn.ConvTranspose2d):
         nn.init.xavier_uniform_(m.weight.data)
         nn.init.zeros_(m.bias.data)
-
-
-# class CustomMaxPooling2D(nn.Module):
-#     """"
-#     This class performs 2D max-pooling in a way that the shape of the tensor after max-pooling equals the shape of
-#     the input tensor. We achieve this by performing some padding before performing max-pooling. This function is
-#     inspired by the Keras implementation of max-pooling. We also use elements of the GitHub repository of the max_pool
-#     function in keras/backend/torch/nn.
-#
-#     Args:
-#         kernel_size:    a tuple that indicates the size of the max-pooling kernel (over the spatial dimensions).
-#         strides:        a tuple indicating the stride used for each dimension
-#
-#     """
-#
-#     def __init__(self, kernel_size, strides=None):
-#         super(CustomMaxPooling2D, self).__init__()
-#
-#         self.kernel_size = kernel_size
-#         self.strides = kernel_size if strides is None else strides
-#
-#     def forward(self, inputs):
-#         """"
-#         This function performs the custom 2D max-pooling.
-#
-#         Args:
-#             inputs:     a torch tensor of shape 'batch_size x num_channels x ... x ......' where the last dimensions
-#                         form the spatial dimensions. E.g. in case of 2D images we have a tensor of size
-#                         'batch_size x num_channels x image_width x image_height'
-#
-#         Returns:
-#             a torch tensor with size inputs.size()
-#
-#         """
-#
-#         # First we do some padding such that the output shape after max pooling equals the input shape.
-#
-#         # Grab the number of elements each spatial dimension of the input has and calculate the number of spatial dimensions
-#         # that we have
-#         spatial_shape = inputs.shape[2:]
-#         num_spatial_dims = len(spatial_shape)
-#
-#         # Initialize the tuple where entries (2*i, 2*i+1) indicate with how many elements to pad the 'left' hand-side of
-#         # spatial dimension i and with how many elements to pad the 'right' hand-side of spatial dimension i.
-#         padding = ()
-#
-#         # For every spatial dimension, do ...
-#         for i in range(num_spatial_dims):
-#
-#             # Grab the kernel length, the stride, and the number of elements of the i-th spatial dimension.
-#             kernel_length = self.kernel_size[i]
-#             stride = self.strides[i]
-#             num_elements = spatial_shape[i]
-#
-#             # Determine how much to pad the 'left' and 'right' side of the i-th spatial dimension. You do this by first
-#             # calculating the total amount of padding needed for both 'left' and 'right' side and then dividing this amount
-#             # of padding (approximately) equally on both sides.
-#             if (num_elements - 1) % stride == 0:
-#                 total_padding_length = (kernel_length - 1)
-#             else:
-#                 total_padding_length = ((kernel_length - 1) - (num_elements - 1) % stride)
-#             left_padding = int(np.floor(total_padding_length / 2))
-#             right_padding = int(np.ceil(total_padding_length / 2))
-#
-#             # Determine the required padding for the i-th spatial dimension.
-#             padding_size = (left_padding, right_padding)
-#
-#             # Add this required padding to the 'padding' variable required to perform the padding with nn.functional.pad
-#             padding = padding_size + padding
-#
-#         # Perform the padding
-#         inputs = nn.functional.pad(inputs, padding, mode="replicate")
-#
-#         # Perform the max-pooling
-#         return nn.functional.max_pool2d(inputs, kernel_size=self.kernel_size, stride=self.strides)
 
 
 class ConvBlock(nn.Module):
@@ -137,8 +86,6 @@ class ConvBlock(nn.Module):
 
         # Initialize the weights
         self.conv.apply(conv_weights_init)
-
-        #self.maxpool = CustomMaxPooling2D(maxpool_kernel_size)
 
     def forward(self, x):
 

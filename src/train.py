@@ -9,6 +9,7 @@ from torch.utils.data.dataloader import DataLoader
 import torch
 
 import os
+import json
 
 import wandb
 
@@ -48,8 +49,6 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
 
     #transforms = None
 
-    # TODO: make sure the transforms above correspond to the ones used in the paper.
-
     # Load the dataset
     dataset = Dataset('train', number_of_classes, transforms)
 
@@ -79,8 +78,6 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
     #         },
     #     ]
     # )
-
-    # TODO: check if the adadelta parameters are as in the paper
 
     # Define two saving functions
     def save_latest(epoch):
@@ -136,6 +133,10 @@ def train(experiment_directory, prev_model_dir=None, latent_dim=50, num_epochs=7
         "batch_size_update_freq": batch_size_update_freq,
         "max_batch_size": max_batch_size
     }
+
+    # Save the specs file in the experiment directory
+    with open(os.path.join(experiment_directory, "specs.json"), "w") as f:
+        json.dump(specs, f)
 
     # Create a weights and biases (WB) session where we monitor the losses and also save the specifications
     experiment_name = os.path.basename(experiment_directory)

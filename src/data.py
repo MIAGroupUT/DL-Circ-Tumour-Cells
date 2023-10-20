@@ -56,14 +56,6 @@ class Dataset(torch.utils.data.Dataset):
         self.data = torch.permute(torch.from_numpy(self.data), (0, 3, 1, 2)) #[(0, 502), ...]
         self.labels = torch.from_numpy(self.labels).type(torch.LongTensor)
 
-        # OLD:
-        # self.labels = torch.nn.functional.one_hot(self.labels).type(torch.float) #[(0, 502), ...]
-        # As a sanity check, check if the one-hot encodings of the labels are a 'number_of_classes' dimensional vector
-        # if not (self.labels.size(-1) == number_of_classes):
-        #     raise ValueError("Somehow the number of dimensions of the one-hot encoding of the labels ({}) is not equal "
-        #                      "to the number of classes ({}). Please check what went wrong."
-        #                      .format(self.labels.size(-1), number_of_classes))
-
     def __len__(self):
         return self.data.size(0)
 

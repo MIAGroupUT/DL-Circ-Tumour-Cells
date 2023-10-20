@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import torch
 import pandas as pd
@@ -13,6 +14,10 @@ data_path = os.path.join("..", "data", "cellline-data", "val_set")
 
 
 def load_data():
+    """"
+    This function loads all the cellline validation data that we have. It loads the data for the 2-class case, the
+    5-class case, and the 6-class case.
+    """
 
     # Load the different validation datasets depending on the number of classes used
     x_val_2class = np.load(os.path.join(data_path, "xval_2class_prepr.npy"))
@@ -34,6 +39,15 @@ def load_data():
 
 
 def plot_and_save_confusion_matrix(conf_mat, labels, result_path=0):
+    """"
+    This function plots the confusion matrix and saves the confusion matrix as a png
+
+    Args:
+        conf_mat:       a numpy array / matrix that is a confusion matrix
+        labels:         a list of the labels
+        result_path:    if supplied, it is the location where we save the confusion matrix png
+
+    """
 
     # Plot the confusion matrix
     df_cm = pd.DataFrame(conf_mat, index=[labels[i] for i in range(len(labels))],
@@ -46,13 +60,46 @@ def plot_and_save_confusion_matrix(conf_mat, labels, result_path=0):
         plt.savefig(os.path.join(result_path, "confusion_matrix.png"))
 
 
-def evaluate_model_on_data(model_path, latent_dim, number_of_classes):
+def evaluate_model_on_data(model_path):
+    """"
+    This function takes the model saved at 'model_path' and evaluates the model based on the number of classes the
+    model is trained on.
+
+    If the number of classes is 2:
+        -   We create a t-sne plot of the latent codes of the 2-class data with colors according to their true 2-class
+            labels
+        -   We create a t-sne plot of the latent codes of the 2-class data with colors according to their true 6-class
+            labels
+
+    If the number of classes is 5:
+        -   We create a t-sne plot of the latent codes of the 6-class data with colors according to their true 5-class
+            labels
+        -   We show 10 reconstructions of a cluster in a pre-specified bounding box IN the just described t-sne plot
+
+    If the number of classes is 6:
+        -   Classify the 6-class data and make/plot/save a confusion matrix.
+        -   We create a t-sne plot of the latent codes of the 6-class data with colors according to their true 6-class
+            labels
+
+    Args:
+        model_path:             the directory in which all the relevant parameters of the model are stored. An example
+                                is results/test/model_beta_0
+
+    """
 
     # Use cuda if cuda is available
     if torch.cuda.is_available():
         device = 'cuda'
     else:
         device = 'cpu'
+
+    # Load the specifications related to the model.
+    with open(os.path.join(model_path, "specs.json")) as f:
+        specs = json.load(f)
+
+    # Specifically, load the number of classes on which the model is trained and the latent dimension
+    number_of_classes = specs["number_of_classes"]
+    latent_dim = specs["latent_dim"]
 
     # Load the data
     x_val_2class, y_val_2class, label_dict_2class, \
