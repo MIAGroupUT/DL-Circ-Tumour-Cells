@@ -1,57 +1,124 @@
-# Template
+# Deep learning of circulating tumour cells
 
-This is a template for new MIA projects. Using this ensures consistency within the code of the group.
+This repository tries to reproduce the results in the paper <ins> [Deep learning of circulating tumour cells](https://www.nature.com/articles/s42256-020-0153-x) </ins>
+by Zeune et al. 
 
-## How to use this template
+NOTE: this repository is only tested on Linux.
 
-When you create a new project, select this as template to use. You can do that by
- 1. Click on `Create new project`  
- 2. Click on `Create from template`
- 3. Select the `Group` tab, listed next to the `Built-in` and `Instance` tabs
- 4. Unfold `Mathematical Imaging and AI/Templates` 
- 5. Click on `Use template` next to this `Machine Learning - Python` template
+## Training the model(s)
+The general training paradigm trains a model by training several models subsequently. The previously trained model is used as initialization of the 'new' model. Moreover, for every 'new' model, we only change the 'beta' constant of the classification loss. The other parameters are reset to their initial value. These initial values are saved in a *specs_base.json* file. For every experiment you do, you should create a specific directory where you store this the *specs_base.json* file. This file can, for instance, be:
+```
+{
+    "beta_list": [0.0, 10.0, 100.0, 1000.0],
+    "latent_dim": 50,
+    "num_epochs": 75,
+    "batch_size": 16,
+    "number_of_classes": 6,
+    "alpha": 0.01,
+    "gamma": 1.0,
+    "log_frequency": 25,
+    "snapshot_frequency": 25,
+    "num_random_samples": 3,
+    "batch_size_update_freq": 15,
+    "max_batch_size": 256
+}
+```
+Here:
+- **beta_list**: we train the model ``len(beta_list)`` times where the i-th run uses parameter `beta_list[i-1]` as **beta** and uses the (i-1)st trained model as initialization. 
+- **latent_dim**: the latent dimension used in the model
+- **batch_size**: the initial batch size used during training
+- **number_of_classes**: there is a dataset that has the images divided into two classes (/labels), one that divides them into 5 classes, and one that divides them into 6 classes. The **number_of_classes** variable determines which dataset we use.
+- **alpha**: the latent code regularization loss coefficient
+- **gamma**: the constant in front of the reconstruction loss
+- **log_frequency**: the number of epochs after which to save the LATEST version of the model. NOTE: this overwrites the previous LATEST version.
+- **snapshot_frequency**: the number of epochs after which to save the currently trained model. NOTE: this does not overwrite the previous LATEST version of the model but creates a different file for the model at that specific epoch.
+- **num_random_samples**: the number of samples used to make some figures of the reconstructions.
+- **batch_size_update_freq**: the number of epochs after which we multiply the batch size by 2
+- **max_batch_size**: the maximum batch size possible
 
-After you have created a project using this template, go to the issues (see sidebar) and do what is written in the first issue.
+NOTE: for training the i-th model, all the above parameters are reinitialized. So, e.g. we start with the initial batch size again and do not continue with the batch size that the previous training ended with.
 
-## Meaning of the files and folders
+NOTE: each model trained with a specific **beta** parameter will get its own directory where e.g. the snapshots and reconstruction figures are saved.
 
-| folder/file     | usage |
-| ---             | ---   |
-| data            | Holds all the data you use; unless it is really little data, *DO NOT* commit the data.
-| models          | Place to store your pretrained models.
-| notebooks       | Place to store your Jupyter notebooks.
-| results         | Place to store the images you produce, notebooks that you export to html and other results.
-| src             | Root of where you place all your algorithms and code. Pronounced as `source`.
-| src/data        | Folder to store code with which you can download data.
-| src/features    | Folder to store code with which you turn the data into something usefull to for your networks.
-| src/models      | Folder to store the classes and definitions of the (parts of the) neural networks you are using.
-| src/visualizations | Folder to store code that produces your images or graphical simulations.
-| src/training    | Folder to store code that trains your neural networks.
-| src/utils       | Folder to store code that is used in several of the other parts.
-| tests           | Location for code that verifies whether the algorithms you wrote are producing the correct output. A sample test is included.
-| .coveragerc     | Configuration for coverage test. You can ignore this file, but do not remove it.
-| .flake8         | Configuration for flake8 test. You can ignore this file, but do not remove it.
-| .gitignore      | Configuration that describes which files should be included into git. You can ignore this file, but do not remove it.
-| .pylintrc       | Configuration for pylint test. You can ignore this file, but do not remove it.
-| .gitlab-ci.yml  | Configuration that tells Gitlab how to do the tests automatically on commit. You can ignore this file, but do not remove it.
-| README.md       | This is the file that is show when you open the repository online. Use it to explain stuff about your project. If this is for a paper, include a way to cite it.
-| environment.yml | Configuration file that is used to create a custom conda environment for the project. Keep it up to date with the packages you use.
+To train the model, you can execute the following command in the command line
 
+```
+python train.py -e experiment_directory
+```
+Here *experiment_directory* is the earlier mentioned directory that contains the *specs_base.json* file.
 
-## FAQ
- 1. What are these `.gitkeep` files?
+After training, the folder will look like:
 
-The template enforces some folder structure. However, git does not care about folders, only about files. So to make sure that git recognizes the folders, a `.gitkeep` is added. Do not remove them. It will confuse git.
+```
+experiment_directory
+│
+└─── model_beta_{beta_list[0]}
+│   │
+│   └─── figures
+│   │   │
+│   │   └─── n_0
+│   │   │   │
+│   │   │   └─── Reconstruction_vs_GT_pair_*.png (the * indicates that there might be multiple of such figures)
+│   │   │
+│   │   └─── n_1
+│   │   │   │
+│   │   │   └─── Reconstruction_vs_GT_pair_*.png
+│   │  ...
+│   │   │
+│   │   └─── latest     
+│   │       │
+│   │       └─── Reconstruction_vs_GT_pair_*.png      
+│   │
+│   └─── ModelParameters
+│   │   │   
+│   │   └─── classifier
+│   │   │   │
+│   │   │   └─── n_0.pth, n_1.pth, ..., latest.pth
+│   │   │
+│   │   └─── decoder
+│   │   │   │
+│   │   │   └─── n_0.pth, n_1.pth, ..., latest.pth
+│   │   │
+│   │   └─── encoder     
+│   │       │
+│   │       └─── n_0.pth, n_1.pth, ..., latest.pth   
+│   │
+│   └─── OptimizerParameters
+│   │   │   
+│   │   └─── n_0.pth, n_1.pth, ..., latest.pth
+│   │
+│   └─── wandb
+│   │
+│   └─── specs.json
+│
+└─── model_beta_{beta_list[1]}
+│   │
+│  ...
+│
+...
+│
+│
+└─── specs_base.json
+```
+where:
+- **model_beta_{beta_list[i-1]}**: the subfolder containing all the relevant information regarding the i-th trained model.
+- **n_0, n_1, ...**: the specific epochs at which we saved the model.
+- **latest**: points to reconstruction figures, model parameters, and optimizer parameters of the last saved model.
+- **figures**: contains figures showing the reconstruction vs. the ground truth image.
+- **ModelParameters**: each subfolder contains parameters of the specific model that the subfolder corresponds to.
+- **OptimizerParameters**: saves the state of the optimizer at the moment of saving the model.
+- **wandb**: a folder corresponding to the used 'weights and biases' session.
+- **specs.json**: a specs.json file containing the specific parameters used for training a specific model. This will be used in the evaluation code.
 
- 2. What files does git ignore by default and which not?
+## Evaluating the trained models
 
-If you place some file into `data`, then git will ignore them. Please do not remove the `.gitkeep` file in it. Other files created by editors like PyCharm or created when making a virtual env are ignored as well. Most other files are not ignored, and will be committed if you add them to your commits. 
+To evaluate a trained model, you can execute the following command in the command line
 
- 3. I see no `requirements.txt`. Where is it?
+```
+python evaluation.py -m model_path -b_x_l -3 -b_x_r 7 -b_y_b 2 -b_y_t 13
+```
+To see what *evaluation.py* does, see the documentation of the *evaluate_model_on_data* function in *evaluation.py*.
 
-When you work with the package `virtualenv` you use a `requirements.txt` to store you packages. This template assumes that people work with Anaconda. The equivalent to `requirements.txt` for Anaconda is `environment.yml`. If you want to use `virtualenv` and not Anaconda, install the packages from `environment.yml` manually.
-
- 4. I have a question about this template that is not listed in this FAQ. Who do I ask?
- 
-Ask Tjeerd Jan Heeringa, PhDer with office Zi3006.
-
+In the above bash script:
+- **model_path**: points to the directory of the model we want to evaluate. Could e.g. be 'experiment_directory/model_beta_{beta_list[-1]}'.
+- **-b_x_***: denotes the x-value of the left-side, the x-value of the right-side, the y-value of the bottom-side, and the y-value of the top side of a box in R^2, respectively. This box is used to plot reconstructions of points within that box in a tSNE-plot.
