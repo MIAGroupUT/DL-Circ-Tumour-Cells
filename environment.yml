@@ -1,4 +1,4 @@
-name: DL_Circ_Tumour_Cells_final
+name: DL_Circ_Tumour_Cells
 channels:
   - pytorch
   - nvidia
