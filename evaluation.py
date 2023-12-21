@@ -166,8 +166,8 @@ def evaluate_model_on_data(model_path, bounding_box=(-3, 7, 2, 13)):
 
         # Reconstruct 10 examples of the cluster inside the bounding box
         box_x_left, box_x_right, box_y_bottom, box_y_top = bounding_box
-        trace_tsne_cluster(tsne_x_val, x_val_6class, box_x_left, box_x_right, box_y_bottom, box_y_top, 10,
-                           result_path=result_path, name="trace_tsne_cluster")
+        trace_tsne_cluster(tsne_x_val, y_pred_val, label_dict_5class, x_val_6class, box_x_left, box_x_right,
+                           box_y_bottom, box_y_top, 10, result_path=result_path, name="trace_tsne_cluster")
 
     elif number_of_classes == 6:
 
@@ -244,7 +244,8 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
 
     # Define the bounding box
-    bounding_box = (args.box_x_left, args.box_x_right, args.box_y_bottom, args.box_y_top)
+    bounding_box = (float(args.box_x_left), float(args.box_x_right),
+                    float(args.box_y_bottom), float(args.box_y_top))
 
     # Evaluate the model
     evaluate_model_on_data(os.path.join(os.path.dirname(__file__), args.model_path), bounding_box)

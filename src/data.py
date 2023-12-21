@@ -3,6 +3,10 @@ import os
 import numpy as np
 
 
+# Get the directory that contains this file and subsequently get the directory on top of this
+file_dir = os.path.join(os.path.dirname(__file__), "..")
+
+
 class Dataset(torch.utils.data.Dataset):
     """"
     This is the Dataset class for performing the experiments with the cellline-data. Currently, it only supports the
@@ -45,8 +49,8 @@ class Dataset(torch.utils.data.Dataset):
         self.transform = transforms
 
         # Define the path where the data and the labels are stored
-        dataset = os.path.join('..', 'data', 'cellline-data', used_data_partition, filename_data)
-        labels = os.path.join('..', 'data', 'cellline-data', used_data_partition, filename_labels)
+        dataset = os.path.join(file_dir, 'data', 'cellline-data', used_data_partition, filename_data)
+        labels = os.path.join(file_dir, 'data', 'cellline-data', used_data_partition, filename_labels)
 
         # Load the data numpy file and the labels numpy file
         self.data = np.load(dataset)

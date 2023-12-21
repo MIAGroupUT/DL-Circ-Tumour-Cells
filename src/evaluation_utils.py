@@ -4,6 +4,7 @@ import matplotlib.patches as patches
 import matplotlib.colors as colors
 import os
 import random
+import warnings
 
 from sklearn.metrics import confusion_matrix
 from sklearn.manifold import TSNE
@@ -65,28 +66,35 @@ def make_tsne_plot(latent_vec, color_label, label_dict, result_path=0, rect_coor
         z_tsne = latent_vec
 
     # Get the number of unique labels
-    unq = np.unique(color_label)
+    num_unq_labels = len(list(label_dict.keys()))
 
     # As we only have datasets with 2 classes, 5 classes, and 6 classes, create a colormap
     # for the scatter plot / TSNE-plot. The code below creates a DISCRETE colormap with a color for each class.
-    if unq.size == 2:
+    if num_unq_labels == 2:
         cmap = colors.ListedColormap(['red', 'red', 'green', 'green'])
         boundaries = [-0.5, 0.5, 1.5]
         norm = colors.BoundaryNorm(boundaries, cmap.N, clip=True)
-    elif unq.size == 5:
+    elif num_unq_labels == 5:
         cmap = colors.ListedColormap(['red', 'green', 'magenta', 'blue', 'cyan'])
         boundaries = [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5]
         norm = colors.BoundaryNorm(boundaries, cmap.N, clip=True)
-    elif unq.size == 6:
+    elif num_unq_labels == 6:
         cmap = colors.ListedColormap(['red', 'yellow', 'green', 'magenta', 'blue', 'cyan'])
         boundaries = [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
         norm = colors.BoundaryNorm(boundaries, cmap.N, clip=True)
     else:
         raise ValueError("The current implementation of this repository only allows the provided cellline-data. The "
-                         "provided datasets either have 2 classes, 5 classes, or 6 classes. The provided 'color_label' "
+                         "provided datasets either have 2 classes, 5 classes, or 6 classes. The provided 'label_dict' "
                          "variable has {} classes. So EITHER a new dataset is provided with 0, 1, 3, 4, 7, or more "
-                         "classes (which is currently not possible) OR the 'color_label' input is wrong."
-                         "".format(unq.size))
+                         "classes (which is currently not possible) OR the 'label_dict' input is wrong."
+                         "".format(num_unq_labels))
+
+    # Also check whether the amount of predicted classes equals the number of classes in the dataset. If not, return
+    # a warning
+    if not (num_unq_labels == np.unique(color_label).size):
+        warnings.warn("The number of unique predicted labels by the classifier is not equal to the number of "
+                      "classes/labels present in the dataset. If you do expect that each class is predicted at least "
+                      "once, the used model might not be trained adequately.")
 
     # If rect_coords is specified, make a rectangle object that we also plot in the TSNE-plot. 
     if rect_coords:
@@ -102,7 +110,7 @@ def make_tsne_plot(latent_vec, color_label, label_dict, result_path=0, rect_coor
 
     # Create a colorbar next to the scatter plot needed to indicate what label corresponds to which color
     cb = plt.colorbar(sc)
-    cb.set_ticks(np.arange(0, unq.size, 1), labels=[label_dict[i] for i in unq])
+    cb.set_ticks(np.arange(0, num_unq_labels, 1), labels=[label_dict[i] for i in list(label_dict.keys())])
 
     # Add the rectangle.
     if rect_coords:
@@ -117,7 +125,7 @@ def make_tsne_plot(latent_vec, color_label, label_dict, result_path=0, rect_coor
     return z_tsne
 
 
-def trace_tsne_cluster(tsne_code, x, tsne1low, tsne1up, tsne2low, tsne2up, nrex, result_path=0,
+def trace_tsne_cluster(tsne_code, color_label, label_dict, x, tsne1low, tsne1up, tsne2low, tsne2up, nrex, result_path=0,
                        name="reconstruction_of_tsne_selection"):
     """"
     This function grabs an earlier calculated TSNE-plot, plots a rectangular box somewhere in this plot, and grabs some
@@ -128,6 +136,10 @@ def trace_tsne_cluster(tsne_code, x, tsne1low, tsne1up, tsne2low, tsne2up, nrex,
         tsne_code:          a 'batch_size x 2' numpy array containing the points in the TSNE-plot. These correspond to
                             the locations of the latent vectors in the TSNE-plot. The number 'batch_size' indicates the
                             number of points in the TSNE-plot.
+        color_label:        a 1d numpy array containing the true classes / labels to which each latent vector in
+                            latent_vec belongs. Note: the classes / labels are represented by integers.
+        label_dict:         a dictionary where each integer in color_label is associated a specific class name. E.g. the
+                            label associated with integer 0 could have the name 'WBC'
         x:                  a numpy array of size 'batch_size x image_width x image_height'. It contains the (ground
                             truth) data / images corresponding to each point in the TSNE-plot.
         tsne1low:           the x-value of the left-side of the rectangular box. Corresponds to x_left in the
@@ -148,7 +160,7 @@ def trace_tsne_cluster(tsne_code, x, tsne1low, tsne1up, tsne2low, tsne2up, nrex,
     """
 
     # Highlight the selected area in the TSNE-plot / scatter plot
-    _ = make_tsne_plot(tsne_code, np.ones(tsne_code.shape[0]), rect_coords=[tsne1low, tsne1up, tsne2low, tsne2up])
+    _ = make_tsne_plot(tsne_code, color_label, label_dict, rect_coords=[tsne1low, tsne1up, tsne2low, tsne2up])
 
     # Find the points in the TSNE-plot that are inside the box
     tsne1_fulfilled = np.logical_and(tsne_code[:, 0] >= tsne1low, tsne_code[:, 0] <= tsne1up)
