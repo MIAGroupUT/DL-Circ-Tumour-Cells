@@ -143,7 +143,10 @@ When using this code, please reference the following paper:
 ```
 
 ## Contact
-This repository is developed by Sven Dummer and is a part of his PhD. When you have any questions regarding the code, do not hesitate to:
+This repository is developed by Sven Dummer and is a part of his PhD. This repository can be found at the Github page of the 
+[Mathematics of Imaging & AI](https://github.com/MIAGroupUT/DL-Circ-Tumour-Cells) (MIA) group at the University of Twente and 
+on the personal GitHub page of [Sven](https://github.com/MIAGroupUT/DL-Circ-Tumour-Cells).
+When you have any questions regarding the code, do not hesitate to:
 - Open an issue,
 - Or contact Sven by sending an email to [s.c.dummer@utwente.nl](mailto:s.c.dummer@utwente.nl)
 
