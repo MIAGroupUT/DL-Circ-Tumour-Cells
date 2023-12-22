@@ -17,7 +17,10 @@ pandas=2.1.4
 seaborn=0.13.0
 wandb=0.16.1
 ```
-One can also use the `environment.yml` file to create a conda environment that contains the required packages.
+Optionally, one can create a conda environment that contains the required packages via the supplied `environment.yml` file:
+```
+conda env create -f environment.yml
+```
 
 ## Training the model(s) 
 The general training paradigm trains a model by training several models subsequently. The previously trained model is used as initialization of the 'new' model. Moreover, for every 'new' model, we only change the 'beta' constant of the classification loss. The other parameters are reset to their initial value. These initial values are saved in a `specs_base.json` file. For every experiment you do, you should create a specific directory where you store this `specs_base.json` file. 
